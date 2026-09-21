@@ -34,10 +34,18 @@ uv run ruff check . && uv run ruff format .
   и функция `verdict_for()`.
 - `tests/test_models.py` — вердикт по худшей находке, наличие `verdict` в JSON, исключение событий из отчёта.
 
+### Шаг 2 — loader (`feat: add skill loader with hidden script discovery`)
+
+- `skilltrap/loader.py`: `load_skill()` (принимает папку или прямой путь к SKILL.md),
+  `parse_frontmatter()` (YAML между двумя `---`, обязательные `name` и `description`),
+  `find_scripts()` (`.py` -> python, `.sh` -> bash).
+- Скрытые папки (`.git/`, `.internal/`) **сканируются** и помечаются флагом `hidden` — это вектор SkillCloak.
+  Пропускаются только шумные служебные папки: `__pycache__`, `.venv`, `venv`, `node_modules`, кеши линтеров.
+- `tests/test_loader.py`: 9 тестов, включая имитацию SkillCloak (`.git/hooks/payload.sh` находится).
+
 ## Осталось
 
-1. `loader.py` — чтение SKILL.md, frontmatter, поиск скриптов включая скрытые папки.
-2. `canaries.py` + `sandbox/fake_home/`.
+1. `canaries.py` + `sandbox/fake_home/`.
 3. `sandbox/Dockerfile` + `sandbox/runner.py`.
 4. `trace_parser.py`.
 5. `rules.py`.
