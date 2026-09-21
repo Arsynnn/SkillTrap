@@ -12,6 +12,7 @@ from pathlib import Path
 
 from skilltrap import rules
 from skilltrap.canaries import generate_canaries
+from skilltrap.fsdiff import diff, snapshot
 from skilltrap.loader import load_skill
 from skilltrap.models import Report
 from skilltrap.sandbox.runner import SandboxConfig, SandboxError, build_image, prepare_workspace
@@ -54,17 +55,23 @@ def scan_skill(
                 run.trace_log = None
 
     # Поведенческие находки — основные, статические идут к ним бонусом.
-    findings = rules.evaluate(skill, report.runs, canaries) + run_static_checks(skill)
+    findings = rules.evaluate(
+        skill, report.runs, canaries, report.home_changes
+    ) + run_static_checks(skill)
     report.findings = sorted(findings, key=lambda f: (-f.severity.rank, f.rule_id, str(f.script)))
     report.duration_s = round(time.monotonic() - started, 2)
     return report
 
 
 def _run_all(skill, canaries, workspace_root: Path, config: SandboxConfig, report: Report) -> None:
-    """Запустить все скрипты скила и разобрать их логи."""
+    """Запустить все скрипты скила, разобрать логи и сравнить fake_home до/после."""
     workspace = prepare_workspace(workspace_root, skill, canaries)
+    before = snapshot(workspace.home_dir)
+
     for script in skill.scripts:
         run = run_in_sandbox(script, workspace, config)
         if run.trace_log is not None:
             run.events = parse_trace_log(run.trace_log)
         report.runs.append(run)
+
+    report.home_changes = diff(before, snapshot(workspace.home_dir))

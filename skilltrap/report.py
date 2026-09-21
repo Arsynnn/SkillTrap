@@ -119,6 +119,18 @@ def render_markdown(report: Report) -> str:
                 lines.append("```")
                 lines.append("")
 
+    changes = report.home_changes
+    if not changes.is_empty:
+        lines += ["## Изменения в домашней папке песочницы", ""]
+        for label, paths in (
+            ("Создано", changes.created),
+            ("Изменено", changes.modified),
+            ("Удалено", changes.deleted),
+        ):
+            if paths:
+                lines.append(f"- {label}: " + ", ".join(f"`{p}`" for p in paths))
+        lines.append("")
+
     lines += [
         "## Запуски",
         "",

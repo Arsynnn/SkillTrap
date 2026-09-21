@@ -134,6 +134,18 @@ class ScriptRun(BaseModel):
     events: list[TraceEvent] = Field(default_factory=list, repr=False, exclude=True)
 
 
+class FsChanges(BaseModel):
+    """Что изменилось в fake_home за время запуска (сравнение хешей до и после)."""
+
+    created: list[str] = Field(default_factory=list)
+    modified: list[str] = Field(default_factory=list)
+    deleted: list[str] = Field(default_factory=list)
+
+    @property
+    def is_empty(self) -> bool:
+        return not (self.created or self.modified or self.deleted)
+
+
 class Finding(BaseModel):
     """Одна находка правила: что именно подозрительного сделал скил."""
 
@@ -155,6 +167,7 @@ class Report(BaseModel):
     started_at: datetime = Field(default_factory=datetime.now)
     duration_s: float = 0.0
     sandbox_error: str | None = None  # контейнер не собрался/не запустился
+    home_changes: FsChanges = Field(default_factory=lambda: FsChanges())
 
     @computed_field  # type: ignore[prop-decorator]
     @property

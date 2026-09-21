@@ -151,6 +151,19 @@ precision = 1.00, recall = 1.00, F1 = 1.00.
 - Подключено в `scan.py`: поведенческие находки + статические, сортировка общая.
 - `tests/test_static_checks.py`: 6 тестов, включая проверку, что чистые фикстуры дают ноль находок.
 
+### Шаг 10 — fsdiff (`feat: add fake home snapshot diff`)
+
+- `skilltrap/fsdiff.py`: `snapshot()` (sha256 всех файлов fake_home) и `diff()` -> `FsChanges`
+  (создано / изменено / удалено). Модель `FsChanges` добавлена в `models.py`, отчёт хранит её в
+  `Report.home_changes`.
+- Зачем поверх strace: трассировка пишет только заказанные вызовы, а сравнение хешей не зависит
+  от списка syscall'ов — это независимая перепроверка.
+- Правило `home-file-created/modified/deleted` (MEDIUM) срабатывает только на изменения,
+  которых **нет** среди уже найденного по strace, иначе одно и то же попадало бы в отчёт дважды.
+- В Markdown-отчёте появилась секция «Изменения в домашней папке песочницы».
+- `tests/test_fsdiff.py`: 5 тестов, включая проверку отсутствия дублей.
+- Метрики eval после подключения не изменились: precision 1.00, recall 1.00.
+
 ## Осталось
 3. `sandbox/Dockerfile` + `sandbox/runner.py`.
 4. `trace_parser.py`.

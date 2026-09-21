@@ -17,8 +17,16 @@ from __future__ import annotations
 
 from pathlib import Path, PurePosixPath
 
-from skilltrap.canaries import CANARY_PREFIX, decoy_paths, persistence_paths
-from skilltrap.models import Canary, Finding, ScriptRun, Severity, SkillInfo, SyscallKind
+from skilltrap.canaries import CANARY_PREFIX, container_path, decoy_paths, persistence_paths
+from skilltrap.models import (
+    Canary,
+    Finding,
+    FsChanges,
+    ScriptRun,
+    Severity,
+    SkillInfo,
+    SyscallKind,
+)
 from skilltrap.trace_parser import connect_target, is_write_open
 
 #: Рабочая папка скила внутри контейнера — запись сюда нормальна.
@@ -40,7 +48,12 @@ MAX_EVIDENCE = 3
 EVIDENCE_WIDTH = 240
 
 
-def evaluate(skill: SkillInfo, runs: list[ScriptRun], canaries: list[Canary]) -> list[Finding]:
+def evaluate(
+    skill: SkillInfo,
+    runs: list[ScriptRun],
+    canaries: list[Canary],
+    changes: FsChanges | None = None,
+) -> list[Finding]:
     """Применить все правила и вернуть находки, отсортированные по серьёзности."""
     findings: list[Finding] = []
     for run in runs:
@@ -52,6 +65,8 @@ def evaluate(skill: SkillInfo, runs: list[ScriptRun], canaries: list[Canary]) ->
         findings += write_outside_workdir(run)
         findings += file_deleted(run)
         findings += timed_out(run)
+    if changes is not None:
+        findings += home_changes(changes, findings)
     return sorted(findings, key=lambda f: (-f.severity.rank, f.rule_id, str(f.script)))
 
 
@@ -260,6 +275,41 @@ def timed_out(run: ScriptRun) -> list[Finding]:
             script=run.script,
         )
     ]
+
+
+def home_changes(changes: FsChanges, already_found: list[Finding]) -> list[Finding]:
+    """MEDIUM: файл домашней папки изменился, но по логу strace этого не видно.
+
+    Такие находки — «подстраховка»: сравнение хешей не зависит от того, какие вызовы
+    мы просили strace записывать. Всё, что уже названо другими правилами, не повторяем.
+    """
+    reported = " ".join(finding.title for finding in already_found)
+    actions = (
+        ("home-file-created", "создан", changes.created),
+        ("home-file-modified", "изменён", changes.modified),
+        ("home-file-deleted", "удалён", changes.deleted),
+    )
+
+    findings: list[Finding] = []
+    for rule_id, verb, paths in actions:
+        for relative in paths:
+            full_path = container_path(relative)
+            if full_path in reported:
+                continue  # это же изменение уже описано по логу strace
+            findings.append(
+                _finding(
+                    rule_id=rule_id,
+                    severity=Severity.MEDIUM,
+                    title=f"Файл домашней папки {verb}: {full_path}",
+                    detail=(
+                        "Сравнение хешей fake_home до и после запуска показало изменение, "
+                        "которого нет в логе strace."
+                    ),
+                    evidence=[],
+                    script=None,
+                )
+            )
+    return findings
 
 
 def _finding(
