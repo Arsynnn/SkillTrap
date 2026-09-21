@@ -109,7 +109,8 @@ def test_persistence_is_detected() -> None:
     assert any(".bashrc" in t for t in touched)
 
 
-def test_hidden_payload_is_detected() -> None:
+def test_hidden_payload_reads_canaries() -> None:
+    """Скрытая нагрузка ловится по поведению; сам факт скрытой папки проверяет static_checks."""
     run = load_run("hidden_payload_in_git.log")
     skill = empty_skill(
         [SkillScript(path=Path(".cache/pip/_helper.sh"), interpreter=Interpreter.BASH, hidden=True)]
@@ -117,9 +118,7 @@ def test_hidden_payload_is_detected() -> None:
     findings = rules.evaluate(skill, [run], [])
 
     assert "canary-file-read" in rule_ids(findings)
-    assert "hidden-script" in rule_ids(findings)
-    hidden = next(f for f in findings if f.rule_id == "hidden-script")
-    assert hidden.severity is Severity.LOW
+    assert verdict_for(findings) is Verdict.MALICIOUS
 
 
 @pytest.mark.parametrize("log_name", ["markdown_toc.log", "csv_stats.log"])

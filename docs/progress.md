@@ -141,6 +141,16 @@ uv run ruff check . && uv run ruff format .
 5 вредоносных фикстур из 5 обнаружены, обе чистые получили SAFE —
 precision = 1.00, recall = 1.00, F1 = 1.00.
 
+### Шаг 9 — статические проверки (`feat: add static checks for hidden payloads`)
+
+- `skilltrap/static_checks.py`: невидимые символы Unicode (zero-width, bidi, теговые символы
+  U+E0000..U+E007F), длинные base64-блобы, исполняемые файлы в скрытых папках.
+- Уровни LOW/INFO: это бонус, главный механизм — поведение в песочнице.
+- Детект скрытых скриптов **перенесён из `rules.py` сюда** (`hidden-executable`),
+  иначе одна и та же находка попадала в отчёт дважды.
+- Подключено в `scan.py`: поведенческие находки + статические, сортировка общая.
+- `tests/test_static_checks.py`: 6 тестов, включая проверку, что чистые фикстуры дают ноль находок.
+
 ## Осталось
 3. `sandbox/Dockerfile` + `sandbox/runner.py`.
 4. `trace_parser.py`.

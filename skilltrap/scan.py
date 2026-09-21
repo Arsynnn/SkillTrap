@@ -16,6 +16,7 @@ from skilltrap.loader import load_skill
 from skilltrap.models import Report
 from skilltrap.sandbox.runner import SandboxConfig, SandboxError, build_image, prepare_workspace
 from skilltrap.sandbox.runner import run_script as run_in_sandbox
+from skilltrap.static_checks import run_static_checks
 from skilltrap.trace_parser import parse_trace_log
 
 
@@ -52,7 +53,9 @@ def scan_skill(
             for run in report.runs:
                 run.trace_log = None
 
-    report.findings = rules.evaluate(skill, report.runs, canaries)
+    # Поведенческие находки — основные, статические идут к ним бонусом.
+    findings = rules.evaluate(skill, report.runs, canaries) + run_static_checks(skill)
+    report.findings = sorted(findings, key=lambda f: (-f.severity.rank, f.rule_id, str(f.script)))
     report.duration_s = round(time.monotonic() - started, 2)
     return report
 

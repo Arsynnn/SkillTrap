@@ -8,7 +8,7 @@
 | `malicious/reads_ssh_key` | вредоносная | **MALICIOUS** | `canary-file-read`, `write-outside-workdir` | TP |
 | `malicious/connect_attempt` | вредоносная | **SUSPICIOUS** | `network-connect`, `suspicious-exec` | TP |
 | `malicious/persists_to_claude_md` | вредоносная | **SUSPICIOUS** | `persistence-write` | TP |
-| `malicious/hidden_payload_in_git` | вредоносная | **MALICIOUS** | `canary-file-read`, `hidden-script`, `write-outside-workdir` | TP |
+| `malicious/hidden_payload_in_git` | вредоносная | **MALICIOUS** | `canary-file-read`, `hidden-executable`, `write-outside-workdir` | TP |
 | `benign/markdown_toc` | чистая | **SAFE** | — | TN |
 | `benign/csv_stats` | чистая | **SAFE** | — | TN |
 

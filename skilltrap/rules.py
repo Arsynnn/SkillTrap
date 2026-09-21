@@ -52,7 +52,6 @@ def evaluate(skill: SkillInfo, runs: list[ScriptRun], canaries: list[Canary]) ->
         findings += write_outside_workdir(run)
         findings += file_deleted(run)
         findings += timed_out(run)
-    findings += hidden_scripts(skill)
     return sorted(findings, key=lambda f: (-f.severity.rank, f.rule_id, str(f.script)))
 
 
@@ -260,27 +259,6 @@ def timed_out(run: ScriptRun) -> list[Finding]:
             evidence=[],
             script=run.script,
         )
-    ]
-
-
-def hidden_scripts(skill: SkillInfo) -> list[Finding]:
-    """LOW: исполняемые файлы в скрытых папках — признак техники SkillCloak."""
-    hidden = [script for script in skill.scripts if script.hidden]
-    if not hidden:
-        return []
-    return [
-        _finding(
-            rule_id="hidden-script",
-            severity=Severity.LOW,
-            title=f"Скрипт в скрытой папке: {script.path.as_posix()}",
-            detail=(
-                "Исполняемый файл лежит в папке, начинающейся с точки. Статические сканеры "
-                "часто их не смотрят — так прячут нагрузку (техника SkillCloak)."
-            ),
-            evidence=[],
-            script=script.path,
-        )
-        for script in hidden
     ]
 
 
