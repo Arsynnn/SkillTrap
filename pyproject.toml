@@ -38,3 +38,6 @@ select = ["E", "F", "I", "UP", "B"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "docker: тесты, которым нужен работающий Docker (пропускаются, если демона нет)",
+]

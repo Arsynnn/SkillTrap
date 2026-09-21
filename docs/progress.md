@@ -56,6 +56,36 @@ uv run ruff check . && uv run ruff format .
 - `.gitattributes`: `* text=auto eol=lf` — на Windows иначе `.sh` уезжает в CRLF и bash в контейнере падает.
 - `tests/test_canaries.py`: 6 тестов (уникальность, отсутствие `CANARY-` в шаблоне, подстановка, ошибки).
 
+### Шаг 4 — Docker-песочница и runner (`feat: add docker sandbox runner with strace`)
+
+- `skilltrap/sandbox/Dockerfile`: `python:3.12-slim` + `strace`, пользователь `skill` (uid 1000),
+  точки монтирования `/skill` и `/trace`.
+- `skilltrap/sandbox/runner.py`: `build_image()`, `prepare_workspace()`, `run_script()`.
+  Флаги запуска: `--network none --user 1000:1000 --memory=256m --cpus=1.0 --pids-limit=128
+  --cap-drop ALL --cap-add SYS_PTRACE --security-opt no-new-privileges`, плюс `timeout --signal=KILL 30`
+  внутри контейнера и таймаут subprocess снаружи.
+- Скил копируется во временный workspace и монтируется уже копия — оригинал на хосте не изменяется.
+- **strace заработал с первой попытки**, `--cap-add SYS_PTRACE` оставлен для надёжности.
+- Ловушка Windows: `subprocess.run(text=True)` падал с `UnicodeDecodeError` на выводе контейнера —
+  теперь явно `encoding="utf-8", errors="replace"`.
+- `tests/test_runner.py`: 3 теста без Docker (флаги команды, workspace) + 1 интеграционный
+  с маркером `docker` (пропускается, если демона нет).
+
+### Шаг 5 — фикстуры (`test: add benign and malicious skill fixtures`)
+
+Сделаны раньше плана, потому что на них отлаживалась песочница и с них сняты эталонные логи strace.
+
+- `fixtures/malicious/`: `reads_env_canary` (читает `~/.env`, значение уходит в аргументы `echo`),
+  `reads_ssh_key` (читает `~/.ssh/id_rsa` и `config`, копирует в `/tmp`), `connect_attempt`
+  (`connect()` на 127.0.0.1 + запуск `curl`), `persists_to_claude_md` (дописывает `CLAUDE.md`,
+  `AGENTS.md`, `.bashrc`), `hidden_payload_in_git` (нагрузка в скрытой `.cache/pip/_helper.sh`).
+- `fixtures/benign/`: `markdown_toc` (python), `csv_stats` (bash) — ожидаемый вердикт SAFE.
+- Все имитации соответствуют правилам безопасности: только приманки, только localhost,
+  запись только внутри песочницы, никаких загрузок из сети.
+- Оговорка: настоящий SkillCloak прячет нагрузку в `.git/`, но такую папку нельзя хранить
+  внутри git-репозитория, поэтому в фикстуре используется скрытая `.cache/`.
+- `tests/data/*.log` — настоящие логи strace с этих прогонов, на них тестируется парсер без Docker.
+
 ## Осталось
 3. `sandbox/Dockerfile` + `sandbox/runner.py`.
 4. `trace_parser.py`.
