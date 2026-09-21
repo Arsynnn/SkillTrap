@@ -98,6 +98,33 @@ uv run ruff check . && uv run ruff format .
 - `tests/test_trace_parser.py`: 16 тестов, из них 7 — прогон настоящих логов всех фикстур.
   Docker для тестов парсера не нужен.
 
+### Шаг 7 — правила (`feat: add detection rules`)
+
+Восемь правил в `skilltrap/rules.py`:
+
+| rule_id | Уровень | Когда срабатывает |
+|---|---|---|
+| `canary-file-read` | CRITICAL | открыт файл-приманка (`.env`, `.ssh/id_rsa`, `.aws/credentials`, токен) |
+| `canary-value-leak` | CRITICAL | уникальное значение `CANARY-...` попало в аргументы другого вызова |
+| `network-connect` | HIGH | `connect()` по AF_INET/AF_INET6 |
+| `suspicious-exec` | HIGH | запуск `curl`, `wget`, `nc`, `ssh`… или оболочки с `-c` |
+| `persistence-write` | HIGH | запись в `CLAUDE.md`, `AGENTS.md`, `.bashrc`, `.profile` |
+| `write-outside-workdir` | MEDIUM | запись за пределами `/skill` |
+| `file-deleted` | MEDIUM | удаление или переименование файла |
+| `script-timeout` | MEDIUM | скрипт убит по таймауту (лог может быть неполным) |
+| `hidden-script` | LOW | исполняемый файл в скрытой папке (SkillCloak) |
+
+Калибровка по «чистым» логам, чтобы не было ложных срабатываний:
+
+- `bash` сам ходит в unix-сокет `/var/run/nscd/socket` -> учитываем только AF_INET/AF_INET6;
+- `bash` открывает `/dev/tty` на запись -> записи в `/dev`, `/proc`, `/sys`, `/run` игнорируем;
+- интерпретатор скрипта (`bash /skill/scripts/x.sh`) не должен считаться подозрительным запуском
+  -> оболочка подозрительна только с флагом `-c`.
+
+Находки группируются по цели (путь, адрес, программа), в каждой не больше 3 строк лога как
+доказательство. `tests/test_rules.py`: 9 тестов, включая проверку, что обе benign-фикстуры
+дают ровно ноль находок.
+
 ## Осталось
 3. `sandbox/Dockerfile` + `sandbox/runner.py`.
 4. `trace_parser.py`.
