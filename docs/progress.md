@@ -86,6 +86,18 @@ uv run ruff check . && uv run ruff format .
   внутри git-репозитория, поэтому в фикстуре используется скрытая `.cache/`.
 - `tests/data/*.log` — настоящие логи strace с этих прогонов, на них тестируется парсер без Docker.
 
+### Шаг 6 — парсер strace (`feat: add strace log parser`)
+
+- `skilltrap/trace_parser.py`: `parse_trace_log()` / `parse_trace_text()` -> `list[TraceEvent]`.
+- Обрабатываются все реальные формы строк: обычный вызов, `<unfinished ...>` + `<... resumed>`
+  (склеиваются по pid), сигналы `--- SIGCHLD ---` и `+++ exited +++` (пропускаются).
+- `split_args()` считает скобки и кавычки: наивный `split(",")` ломается на `["echo", "x"]`
+  и на структурах `{sa_family=AF_INET, sin_port=...}`.
+- Вспомогательные функции для правил: `is_write_open()` (флаги `O_WRONLY|O_CREAT|O_APPEND`)
+  и `connect_target()` (`"127.0.0.1:9999"` или `unix:/path`).
+- `tests/test_trace_parser.py`: 16 тестов, из них 7 — прогон настоящих логов всех фикстур.
+  Docker для тестов парсера не нужен.
+
 ## Осталось
 3. `sandbox/Dockerfile` + `sandbox/runner.py`.
 4. `trace_parser.py`.
