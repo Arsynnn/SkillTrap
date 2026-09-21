@@ -43,9 +43,20 @@ uv run ruff check . && uv run ruff format .
   Пропускаются только шумные служебные папки: `__pycache__`, `.venv`, `venv`, `node_modules`, кеши линтеров.
 - `tests/test_loader.py`: 9 тестов, включая имитацию SkillCloak (`.git/hooks/payload.sh` находится).
 
-## Осталось
+### Шаг 3 — приманки и fake_home (`feat: add canary generation and fake home template`)
 
-1. `canaries.py` + `sandbox/fake_home/`.
+- `skilltrap/canaries.py`: `generate_canaries()` (новые `CANARY-<uuid4>` на каждый запуск),
+  `materialize_fake_home()` (копирует шаблон и подставляет значения), списки `decoy_paths()` и
+  `persistence_paths()` — их дальше используют правила.
+- `skilltrap/sandbox/fake_home/`: `.env`, `.ssh/id_rsa`, `.ssh/config`, `.aws/credentials`,
+  `.config/skill/token.json`, `CLAUDE.md`, `AGENTS.md`, `.bashrc`, `.profile`.
+  В репозитории лежат **только плейсхолдеры** `{{CANARY_*}}`; тест это проверяет.
+- `.gitignore`: добавлено исключение для `skilltrap/sandbox/fake_home/**` и `fixtures/**`,
+  иначе шаблонный `.env` не попадал в репозиторий.
+- `.gitattributes`: `* text=auto eol=lf` — на Windows иначе `.sh` уезжает в CRLF и bash в контейнере падает.
+- `tests/test_canaries.py`: 6 тестов (уникальность, отсутствие `CANARY-` в шаблоне, подстановка, ошибки).
+
+## Осталось
 3. `sandbox/Dockerfile` + `sandbox/runner.py`.
 4. `trace_parser.py`.
 5. `rules.py`.

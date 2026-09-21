@@ -216,3 +216,11 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+.claude/settings.local.json
+
+# SkillTrap: шаблон fake_home и фикстуры — это НЕ секреты, а заведомо фейковые
+# файлы-приманки (плейсхолдеры вида {{CANARY_*}}). Их нужно хранить в репозитории,
+# поэтому отменяем правило ".env" выше.
+!skilltrap/sandbox/fake_home/**
+!fixtures/**
