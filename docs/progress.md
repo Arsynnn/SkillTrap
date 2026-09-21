@@ -125,6 +125,22 @@ uv run ruff check . && uv run ruff format .
 доказательство. `tests/test_rules.py`: 9 тестов, включая проверку, что обе benign-фикстуры
 дают ровно ноль находок.
 
+### Шаг 8 — отчёт, CLI и eval (`feat: add report rendering, scan pipeline and CLI`)
+
+- `skilltrap/scan.py` — сам конвейер `scan_skill()`. **Отступление от структуры в CLAUDE.md:**
+  конвейер вынесен из `cli.py` в отдельный модуль, чтобы `eval/run_eval.py` не импортировал CLI.
+- `skilltrap/report.py`: `render_terminal()` (rich: панель вердикта + таблицы),
+  `render_markdown()`, `render_json()`.
+- `skilltrap/cli.py`: `skilltrap scan <path> [--format table|markdown|json] [-o файл]
+  [--timeout N] [--keep-workspace DIR]` и `skilltrap eval`.
+  Коды выхода для CI: `0` SAFE, `1` SUSPICIOUS, `2` MALICIOUS, `3` ошибка (нет Docker / битый скил).
+- `eval/run_eval.py`: прогон всех фикстур, TP/FP/FN/TN, precision/recall/F1, запись `eval/results.md`.
+- Тесты: `tests/test_report.py` (5) и `tests/test_cli.py` (8, конвейер подменён — Docker не нужен).
+
+**Результат первого полного прогона `uv run skilltrap eval`:**
+5 вредоносных фикстур из 5 обнаружены, обе чистые получили SAFE —
+precision = 1.00, recall = 1.00, F1 = 1.00.
+
 ## Осталось
 3. `sandbox/Dockerfile` + `sandbox/runner.py`.
 4. `trace_parser.py`.
